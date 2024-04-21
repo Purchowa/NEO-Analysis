@@ -9,17 +9,26 @@ class NeoApi:
         self.params = {'API_KEY': api_key}
 
 
-def data_extractor(close_approach_data: list, orbit_determinatin_date: str, historic_orbit_determination_date: str) -> list | None:
-    orbit_determinatin_date_format = "%Y-%m-%d %H:%M:%S"
-    close_approach_date_full_format = "%Y-%b-%d %H:%M"
+class DataExtractor:
+    formats = {
+        "orbit_determinatin_date": "%Y-%m-%d %H:%M:%S",
+        "close_approach_date_full": "%Y-%b-%d %H:%M"
+    }
 
-    current_date = time.strptime(orbit_determinatin_date,  orbit_determinatin_date_format)
-    historic_date = time.strptime(historic_orbit_determination_date,  orbit_determinatin_date_format)
+    def extract_close_approach_data(self, close_approach_data: list, orbit_determinatin_date: str, historic_orbit_determination_date: str) -> list | None:
+        
+        current_date = time.strptime(orbit_determinatin_date,  self.formats["orbit_determinatin_date"])
+        historic_date = time.strptime(historic_orbit_determination_date,  self.formats["orbit_determinatin_date"])
 
-    if (current_date <= historic_date):
-        return None
-    
-    is_close_approach_date_newer = lambda close_approach_date, current_date : current_date < time.strptime(close_approach_date, close_approach_date_full_format)
-    
-    return [entry for entry in close_approach_data if is_close_approach_date_newer(entry["close_approach_date_full"], current_date)]
+        if (current_date <= historic_date):
+            return None
+        
+        is_close_approach_date_newer = lambda close_approach_date, current_date : current_date < time.strptime(close_approach_date, self.formats["close_approach_date_full"])
+        
+        future_close_approach_data = [entry for entry in close_approach_data if is_close_approach_date_newer(entry["close_approach_date_full"], current_date)]
+
+        if len(future_close_approach_data) == 0:
+            return None
+        else:
+            return future_close_approach_data
         
