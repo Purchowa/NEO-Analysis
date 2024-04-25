@@ -1,11 +1,13 @@
 {
+  "homepage": "https://purchowa.github.io/NEO-Analytics",
   "name": "neo",
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsx index.ts"
+  "scripts": {    
+    "start": "tsx script.ts",
+    "deploy": "gh-pages -d dist",
+    "build": "tsc"
   },
   "author": "",
   "license": "ISC",
@@ -18,6 +20,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
+    "gh-pages": "^6.1.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.7.2",
     "typescript": "^5.4.5"
