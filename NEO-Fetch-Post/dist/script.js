@@ -42,11 +42,17 @@ dotenv.config();
 const uri = process.env.DB_URI || '';
 const client = new mongodb_1.MongoClient(uri);
 let pages;
+let reqCount = 0;
+function countRequests() {
+    reqCount++;
+    return reqCount;
+}
 function fetchData(page) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const response = yield (0, node_fetch_1.default)(`https://api.nasa.gov/neo/rest/v1/neo/browse?page=${page}&size=20&api_key=${process.env.API_KEY}`);
             const data = yield response.json();
+            countRequests();
             return data;
         }
         catch (error) {
@@ -60,10 +66,12 @@ function fetchAndSaveAsteroidsData(start, stop) {
         try {
             const database = client.db(process.env.DB_NAME);
             const collection = database.collection("asteroids");
+            const fetchDate = new Date().toLocaleDateString();
+            const dayBeforeToday = new Date();
+            dayBeforeToday.setDate(dayBeforeToday.getDate() - 1);
             for (let i = start; i <= stop; i++) {
                 const data = yield fetchData(i);
                 if (data && data.near_earth_objects) {
-                    const fetchDate = new Date().toISOString().slice(0, 10);
                     for (const asteroid of data.near_earth_objects) {
                         const asteroidDB = yield collection.findOne({ neo_reference_id: asteroid.neo_reference_id });
                         const document = Object.assign(Object.assign({}, asteroid), { fetched_on: fetchDate });
@@ -71,7 +79,7 @@ function fetchAndSaveAsteroidsData(start, stop) {
                             yield collection.insertOne(document);
                             console.log("***Fetched from NASA API and saved new asteroid " + asteroid.name + " to DB from page: " + i + "***");
                         }
-                        else if (asteroidDB.orbital_data.orbit_determination_date !== asteroid.orbital_data.orbit_determination_date) {
+                        else if (asteroidDB.orbital_data.orbit_determination_date !== asteroid.orbital_data.orbit_determination_date && asteroidDB.fetched_on === dayBeforeToday.toLocaleDateString()) {
                             yield collection.insertOne(document);
                             console.log("***Saving new orbit_determination_date for existing asteroid " + asteroidDB.name + "***");
                         }
@@ -89,9 +97,15 @@ function fetchAndSaveAsteroidsData(start, stop) {
 }
 function setTotalPages() {
     return __awaiter(this, void 0, void 0, function* () {
-        const response = yield (0, node_fetch_1.default)(`https://api.nasa.gov/neo/rest/v1/neo/browse?page=0&size=20&api_key=${process.env.API_KEY}`);
-        const pageJson = yield response.json();
-        pages = pageJson.page.total_pages;
+        try {
+            const response = yield (0, node_fetch_1.default)(`https://api.nasa.gov/neo/rest/v1/neo/browse?page=0&size=20&api_key=${process.env.API_KEY}`);
+            const pageJson = yield response.json();
+            pages = pageJson.page.total_pages;
+            countRequests();
+        }
+        catch (error) {
+            console.error('An error occurred while fetching or processing data:', error);
+        }
     });
 }
 function start() {
@@ -99,6 +113,7 @@ function start() {
         try {
             yield setTotalPages();
             yield client.connect();
+            console.log("Total pages:" + pages);
             console.log("***Connected to DB***");
             console.log("***Fetching asteroids data***");
             const batchSize = 20;
@@ -106,22 +121,23 @@ function start() {
             for (let i = 0; i <= pages; i += batchSize) {
                 startPages.push(i);
             }
-            yield Promise.all(startPages.map(startPage => {
+            yield Promise.all(startPages.map((startPage) => __awaiter(this, void 0, void 0, function* () {
                 const endPage = startPage + batchSize - 1;
-                return fetchAndSaveAsteroidsData(startPage, endPage);
-            }));
+                yield fetchAndSaveAsteroidsData(startPage, endPage);
+                if (reqCount >= 1000) {
+                    console.log("Request limit reached. Waiting for one hour to process the rest");
+                    yield new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
+                    reqCount = 0;
+                }
+            })));
         }
         catch (error) {
             console.error('An error occurred while connecting to the database:', error);
         }
         finally {
             yield client.close();
-            process.exit();
         }
     });
 }
-const test = () => {
-    console.log("Co sekunde");
-};
-//setInterval(start, 1000 * 60 * 2);
 start();
+setInterval(start, 1000 * 60 * 60 * 24);
