@@ -9,7 +9,7 @@ dotenv.config();
 const uri: string = process.env.DB_URI || '';
 const client: MongoClient = new MongoClient(uri);
 let pages: number;
-let remainingRequests: number = 1000;
+let remainingRequests: number = 0;
 const batchSize = 20;
 
 
@@ -25,7 +25,7 @@ function printProgressBar(current: number, total: number): void {
 async function fetchData(page: number): Promise<NeoApiResponse | null> {
     try {
         const response: AxiosResponse = await axios.get(`https://api.nasa.gov/neo/rest/v1/neo/browse?page=${page}&size=20&api_key=${process.env.API_KEY}`);        
-        remainingRequests = parseInt(response.headers['x-ratelimit-remaining']);        
+        remainingRequests = parseInt(response.headers['x-ratelimit-remaining']);          
         const data: NeoApiResponse = response.data;
 
         return data;
@@ -48,7 +48,7 @@ async function fetchAndSaveAsteroidsData(start: number, stop: number): Promise<v
             if (remainingRequests === 0) {
                 console.log("Request limit reached. Waiting for one hour to process the rest");
                 await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
-                remainingRequests = 1000;
+                remainingRequests = 2000;
             }
 
             const data: NeoApiResponse | null = await fetchData(i);
