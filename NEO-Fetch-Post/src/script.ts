@@ -104,10 +104,10 @@ async function start(): Promise<void> {
             const endPage = startPage + batchSize - 1;
             await fetchAndSaveAsteroidsData(startPage, endPage);
 
-            if (reqCount >= 1000) {
+            if (remainingRequests === 0) {
                 console.log("Request limit reached. Waiting for one hour to process the rest");
                 await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
-                reqCount = 0;
+                remainingRequests = 1000;
             }
         }));
 
