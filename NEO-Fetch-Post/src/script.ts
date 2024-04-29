@@ -10,6 +10,17 @@ const uri: string = process.env.DB_URI || '';
 const client: MongoClient = new MongoClient(uri);
 let pages: number;
 let remainingRequests: number = 1000;
+const batchSize = 20;
+
+
+function printProgressBar(current: number, total: number): void {
+    const width = 50;
+    const percent = (current / total) * 100;
+    const progress = Math.floor((width * percent) / 100);
+
+    const progressBar = '[' + '='.repeat(progress) + ' '.repeat(width - progress) + ']';
+    console.log(`Progress: ${progressBar} ${percent.toFixed(2)}%`);
+}
 
 async function fetchData(page: number): Promise<NeoApiResponse | null> {
     try {
@@ -19,7 +30,7 @@ async function fetchData(page: number): Promise<NeoApiResponse | null> {
 
         return data;
     } catch (error) {
-        console.error('An error occurred while fetching data:', error);
+        console.error('***Error when fetching - reached request limit probably***');
         return null;
     }
 }
@@ -29,12 +40,23 @@ async function fetchAndSaveAsteroidsData(start: number, stop: number): Promise<v
         const database: Db = client.db(process.env.DB_NAME);
         const collection: Collection<NearEarthObject> = database.collection("asteroids");
         const fetchDate: string = new Date().toLocaleDateString();
+        let fetchedAsteroids = 0;
+        
 
         for (let i = start; i <= stop; i++) {
+
+            if (remainingRequests === 0) {
+                console.log("Request limit reached. Waiting for one hour to process the rest");
+                await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
+                remainingRequests = 1000;
+            }
+
             const data: NeoApiResponse | null = await fetchData(i);
             
-            if(data === null) {
-                console.log(`Remaining requests: ${remainingRequests}`);
+            if (remainingRequests === 0 || data === null) {
+                console.log("***Request limit reached. Waiting for one hour to process the rest***");
+                await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
+                remainingRequests = 1000;
             }
 
             if (data && data.near_earth_objects) {
@@ -48,18 +70,21 @@ async function fetchAndSaveAsteroidsData(start: number, stop: number): Promise<v
 
                     if (asteroidDB === null) {
                         await collection.insertOne(document);
-                        console.log("***Fetched from NASA API and saved new asteroid " + asteroid.name + " to DB from page: " + i + "***");
+                        //console.log("***Fetched from NASA API and saved new asteroid " + asteroid.name + " to DB from page: " + i + "***");
 
                     } else if (asteroidDB!!.orbital_data.orbit_determination_date !== asteroid.orbital_data.orbit_determination_date && asteroidDB.is_latest) {
 
                         await collection.insertOne(document);
-                        console.log("***Saving new orbit_determination_date for existing asteroid " + asteroidDB.name + "***");
+                        //console.log("***Saving new orbit_determination_date for existing asteroid " + asteroidDB.name + "***");
                         await collection.updateOne({ _id: asteroidDB._id }, { $set: { is_latest: false } });
-                    } else {
-                        console.log("***orbit_determination_date for " + asteroid.name + " is not newer - skipping***");
-                    }
+                    } 
+                    // else {
+                    //     console.log("***orbit_determination_date for " + asteroid.name + " is not newer - skipping***");
+                    // }
                 }
             }
+            printProgressBar(fetchedAsteroids, batchSize * pages);
+            fetchedAsteroids++;
 
         }
     } catch (error) {
@@ -73,7 +98,7 @@ async function setTotalPages(): Promise<void> {
         const pageJson: NearEarthObject = response.data;
         pages = pageJson.page.total_pages;        
     } catch (error) {
-        console.error('An error occurred while fetching or processing data:', error);
+        console.error('***Error with fetching. Probably request limit reached***');
     }
 }
 
@@ -82,12 +107,10 @@ async function start(): Promise<void> {
         await setTotalPages();
         await client.connect();
 
-        console.log("Total pages:" + pages);
-
         console.log("***Connected to DB***");
         console.log("***Fetching asteroids data***");
 
-        const batchSize = 20;
+        
         const startPages: number[] = [];
         for (let i = 0; i <= pages; i += batchSize) {
             startPages.push(i);
@@ -97,11 +120,7 @@ async function start(): Promise<void> {
             const endPage = startPage + batchSize - 1;
             await fetchAndSaveAsteroidsData(startPage, endPage);
 
-            if (remainingRequests === 0) {
-                console.log("Request limit reached. Waiting for one hour to process the rest");
-                await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
-                remainingRequests = 1000;
-            }
+            
         }));
 
     } catch (error) {
