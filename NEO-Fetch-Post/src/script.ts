@@ -1,4 +1,5 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
+import * as http from 'http';
 import { MongoClient, Db, Collection } from 'mongodb';
 import * as dotenv from 'dotenv';
 import { NearEarthObject, NeoApiResponse } from './model';
@@ -9,6 +10,7 @@ const uri: string = process.env.DB_URI || '';
 const client: MongoClient = new MongoClient(uri);
 let pages: number;
 let reqCount: number = 0;
+let remainingRequests: number = 1000;
 
 function countRequests(): number {
     reqCount++;
@@ -17,12 +19,13 @@ function countRequests(): number {
 
 async function fetchData(page: number): Promise<NeoApiResponse | null> {
     try {
-        const response = await axios.get(`https://api.nasa.gov/neo/rest/v1/neo/browse?page=${page}&size=20&api_key=${process.env.API_KEY}`);
+        const response: AxiosResponse = await axios.get(`https://api.nasa.gov/neo/rest/v1/neo/browse?page=${page}&size=20&api_key=${process.env.API_KEY}`);        
+        remainingRequests = parseInt(response.headers['x-ratelimit-remaining']);        
         const data: NeoApiResponse = response.data;
-        countRequests();
+
         return data;
     } catch (error) {
-        console.error('An error occurred while fetching data:', error, ' from page: ', page, ' error: ', error);
+        console.error('An error occurred while fetching data:', error);
         return null;
     }
 }
@@ -32,11 +35,13 @@ async function fetchAndSaveAsteroidsData(start: number, stop: number): Promise<v
         const database: Db = client.db(process.env.DB_NAME);
         const collection: Collection<NearEarthObject> = database.collection("asteroids");
         const fetchDate: string = new Date().toLocaleDateString();
-        const dayBeforeToday: Date = new Date();
-        dayBeforeToday.setDate(dayBeforeToday.getDate() - 1);
 
         for (let i = start; i <= stop; i++) {
             const data: NeoApiResponse | null = await fetchData(i);
+            
+            if(data === null) {
+                console.log(`Remaining requests: ${remainingRequests}`);
+            }
 
             if (data && data.near_earth_objects) {
                 for (const asteroid of data.near_earth_objects) {
@@ -55,7 +60,7 @@ async function fetchAndSaveAsteroidsData(start: number, stop: number): Promise<v
 
                         await collection.insertOne(document);
                         console.log("***Saving new orbit_determination_date for existing asteroid " + asteroidDB.name + "***");
-                        await collection.updateOne({ _id: asteroidDB._id }, { $set: { is_latest: false }});
+                        await collection.updateOne({ _id: asteroidDB._id }, { $set: { is_latest: false } });
                     } else {
                         console.log("***orbit_determination_date for " + asteroid.name + " is not newer - skipping***");
                     }
@@ -113,6 +118,14 @@ async function start(): Promise<void> {
     }
 }
 
-start();
+const server = http.createServer(async (req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Asteroids data fetching server running...');
+});
 
-setInterval(start, 1000 * 60 * 60 * 24);
+server.listen(process.env.PORT, async () => {
+    console.log(`Server running on port ${process.env.PORT}`);
+    await start();
+    setInterval(start, 1000 * 60 * 60 * 24);
+});
+
