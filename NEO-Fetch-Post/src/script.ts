@@ -9,13 +9,7 @@ dotenv.config();
 const uri: string = process.env.DB_URI || '';
 const client: MongoClient = new MongoClient(uri);
 let pages: number;
-let reqCount: number = 0;
 let remainingRequests: number = 1000;
-
-function countRequests(): number {
-    reqCount++;
-    return reqCount;
-}
 
 async function fetchData(page: number): Promise<NeoApiResponse | null> {
     try {
@@ -77,8 +71,7 @@ async function setTotalPages(): Promise<void> {
     try {
         const response: any = await axios.get(`https://api.nasa.gov/neo/rest/v1/neo/browse?page=0&size=20&api_key=${process.env.API_KEY}`);
         const pageJson: NearEarthObject = response.data;
-        pages = pageJson.page.total_pages;
-        countRequests();
+        pages = pageJson.page.total_pages;        
     } catch (error) {
         console.error('An error occurred while fetching or processing data:', error);
     }
