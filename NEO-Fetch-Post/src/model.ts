@@ -1,5 +1,6 @@
 interface NearEarthObject {
     fetched_on: string;
+    is_latest: boolean;
     links: {
         self: string;
     };

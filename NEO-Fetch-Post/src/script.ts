@@ -1,8 +1,7 @@
-import fetch from 'node-fetch';
+import axios from 'axios';
 import { MongoClient, Db, Collection } from 'mongodb';
 import * as dotenv from 'dotenv';
 import { NearEarthObject, NeoApiResponse } from './model';
-import { count } from 'console';
 
 dotenv.config();
 
@@ -14,15 +13,14 @@ let reqCount: number = 0;
 function countRequests(): number {
     reqCount++;
     return reqCount;
-
 }
 
 async function fetchData(page: number): Promise<NeoApiResponse | null> {
     try {
-        const response = await fetch(`https://api.nasa.gov/neo/rest/v1/neo/browse?page=${page}&size=20&api_key=${process.env.API_KEY}`);
-        const data = await response.json();
+        const response = await axios.get(`https://api.nasa.gov/neo/rest/v1/neo/browse?page=${page}&size=20&api_key=${process.env.API_KEY}`);
+        const data: NeoApiResponse = response.data;
         countRequests();
-        return data as NeoApiResponse;
+        return data;
     } catch (error) {
         console.error('An error occurred while fetching data:', error, ' from page: ', page, ' error: ', error);
         return null;
@@ -45,17 +43,19 @@ async function fetchAndSaveAsteroidsData(start: number, stop: number): Promise<v
                     const asteroidDB = await collection.findOne({ neo_reference_id: asteroid.neo_reference_id });
                     const document: NearEarthObject = {
                         ...asteroid,
-                        fetched_on: fetchDate
+                        fetched_on: fetchDate,
+                        is_latest: true
                     }
 
                     if (asteroidDB === null) {
                         await collection.insertOne(document);
                         console.log("***Fetched from NASA API and saved new asteroid " + asteroid.name + " to DB from page: " + i + "***");
 
-                    } else if (asteroidDB!!.orbital_data.orbit_determination_date !== asteroid.orbital_data.orbit_determination_date && asteroidDB.fetched_on === dayBeforeToday.toLocaleDateString()) {
+                    } else if (asteroidDB!!.orbital_data.orbit_determination_date !== asteroid.orbital_data.orbit_determination_date && asteroidDB.is_latest) {
 
                         await collection.insertOne(document);
                         console.log("***Saving new orbit_determination_date for existing asteroid " + asteroidDB.name + "***");
+                        await collection.updateOne({ _id: asteroidDB._id }, { $set: { is_latest: false }});
                     } else {
                         console.log("***orbit_determination_date for " + asteroid.name + " is not newer - skipping***");
                     }
@@ -70,15 +70,14 @@ async function fetchAndSaveAsteroidsData(start: number, stop: number): Promise<v
 
 async function setTotalPages(): Promise<void> {
     try {
-        const response: any = await fetch(`https://api.nasa.gov/neo/rest/v1/neo/browse?page=0&size=20&api_key=${process.env.API_KEY}`);
-        const pageJson: NearEarthObject = await response.json();        
+        const response: any = await axios.get(`https://api.nasa.gov/neo/rest/v1/neo/browse?page=0&size=20&api_key=${process.env.API_KEY}`);
+        const pageJson: NearEarthObject = response.data;
         pages = pageJson.page.total_pages;
         countRequests();
     } catch (error) {
         console.error('An error occurred while fetching or processing data:', error);
     }
 }
-
 
 async function start(): Promise<void> {
     try {
@@ -100,7 +99,7 @@ async function start(): Promise<void> {
             const endPage = startPage + batchSize - 1;
             await fetchAndSaveAsteroidsData(startPage, endPage);
 
-            if(reqCount >= 1000) {
+            if (reqCount >= 1000) {
                 console.log("Request limit reached. Waiting for one hour to process the rest");
                 await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
                 reqCount = 0;
@@ -114,6 +113,6 @@ async function start(): Promise<void> {
     }
 }
 
- start();
- setInterval(start, 1000 * 60 * 60 * 24);
+start();
 
+setInterval(start, 1000 * 60 * 60 * 24);
