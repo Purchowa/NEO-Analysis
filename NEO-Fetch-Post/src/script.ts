@@ -3,13 +3,13 @@ import * as http from 'http';
 import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 import * as dotenv from 'dotenv';
 import { NearEarthObject, NeoApiResponse } from './model';
-import fs from 'fs';
-import path from 'path'
-import express from 'express';
-import ejs from 'ejs';
+import * as fs from 'fs';
+import * as path from 'path'
+import * as ejs from 'ejs';
 import { renderFile } from 'ejs';
 
 dotenv.config();
+const express = require('express');
 const app = express();
 
 const uri: string = process.env.DB_URI || '';
@@ -21,11 +21,11 @@ const batchSize = 20;
 app.set('view engine', 'html');
 app.engine('html', renderFile);
 
-app.get('/', async (req, res) => {
+app.get('/', async (req: any, res: any) => {
     try {
         const page: number = parseInt(req.query.page as string) || 1;
         const asteroidData: NearEarthObject[] = await getAsteroidsFromDB(page);
-        console.log("MONGO_ID " + asteroidData[0]._id);
+        console.log("MONGO_ID " + asteroidData[0].mongoId);
         let totalPages: number;
         const pagesFromFetch: number = await getTotalPages();
 
@@ -42,7 +42,7 @@ app.get('/', async (req, res) => {
     }
 });
 
-app.get('/details/:id', async (req, res) => {
+app.get('/details/:id', async (req: any, res: any) => {
     try {
         const asteroidId = req.params.id;
         if (!ObjectId.isValid(asteroidId)) {

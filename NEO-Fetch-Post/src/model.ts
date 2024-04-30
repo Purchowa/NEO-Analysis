@@ -1,5 +1,5 @@
 interface NearEarthObject {
-    _id: string;
+    mongoId: string;
     fetched_on: string;
     is_latest: boolean;
     links: {
