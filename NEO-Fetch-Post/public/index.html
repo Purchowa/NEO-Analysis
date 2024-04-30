@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroids Data</title>
+    <style>
+        /* Add your CSS styles here */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+        .container {            
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        p {
+            color: #666;
+        }
+        .asteroid {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .asteroid h2 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .pagination {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .pagination a {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #333;
+        }
+        .pagination a:hover {
+            background-color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Near Earth Objects collection</h1>
+        <p>If name of asteroid is dupliacted it means that field <b>orbit_determination_date</b> has changed in period and asteroid has new parameters in <b>orbital_data</b></p>
+        <% if (asteroids && asteroids.length > 0) { %>
+            <% asteroids.forEach((asteroid) => { %>
+                <div class="asteroid">
+                    <a href="/details/<%= asteroid._id %>"><%= asteroid.name %></a>                                                                                
+                </div>
+            <% }); %>            
+            <div class="pagination">
+                <% if (currentPage > 1) { %>
+                    <a href="/?page=<%= currentPage - 1 %>" class="prev">&laquo; Previous</a>
+                <% } %>
+                <% if (currentPage < totalPages) { %>
+                    <a href="/?page=<%= currentPage + 1 %>" class="next">Next &raquo;</a>
+                <% } %>
+            </div>
+        <% } else { %>
+            <p>No asteroids data available.</p>
+        <% } %>
+    </div>
+</body>
+</html>

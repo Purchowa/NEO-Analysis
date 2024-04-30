@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My HTML Page</title>
+    <title>Asteroid Details</title>
     <style>
         /* Add your CSS styles here */
         body {
@@ -12,7 +12,7 @@
             margin: 0;
             padding: 0;
         }
-        .container {
+        .container {            
             max-width: 800px;
             margin: 20px auto;
             padding: 20px;
@@ -30,10 +30,15 @@
 </head>
 <body>
     <div class="container">
-        <h1>Welcome to My HTML Page</h1>
-        <p>This is a simple HTML template.</p>
-        <p>You can edit this file and add your own content.</p>
+        <h1>Asteroid Details</h1>
+        <% if (asteroid) { %>
+            <p><strong>Name:</strong> <%= asteroid.name %></p>
+            <p><strong>ID:</strong> <%= asteroid.neo_reference_id %></p>
+            <p><strong>Estimated Diameter (meters):</strong> <%= asteroid.estimated_diameter.meters.estimated_diameter_min %> - <%= asteroid.estimated_diameter.meters.estimated_diameter_max %></p>
+            <p><strong>Is Potentially Hazardous:</strong> <%= asteroid.is_potentially_hazardous_asteroid ? 'Yes' : 'No' %></p>            
+        <% } else { %>
+            <p>No asteroid data available.</p>
+        <% } %>
     </div>
-    <script src="./dist/script.js"></script>
 </body>
-</html> 
+</html>
