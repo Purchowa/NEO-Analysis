@@ -2,14 +2,9 @@ import requests
 import json
 import time
 
-class NeoApi:
-    browse_all_uri = 'https://api.nasa.gov/neo/rest/v1/neo/browse'
-
-    def __init__(self, api_key: str):
-        self.params = {'API_KEY': api_key}
-
 
 class DataExtractor:
+
     formats = {
         "orbit_determinatin_date": "%Y-%m-%d %H:%M:%S",
         "close_approach_date_full": "%Y-%b-%d %H:%M"
@@ -31,4 +26,4 @@ class DataExtractor:
             return None
         else:
             return future_close_approach_data
-        
+
