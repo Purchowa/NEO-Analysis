@@ -135,15 +135,15 @@ async function fetchAndSaveAsteroidsData(start: number, stop: number): Promise<v
                         await collection.insertOne(document);
                         console.log("***Fetched from NASA API and saved new asteroid " + asteroid.name + " to DB from page: " + i + "***");
 
-                    } else if (asteroidDB!!.orbital_data.orbit_determination_date !== asteroid.orbital_data.orbit_determination_date && asteroidDB.is_latest) {
+                    } else if (asteroidDB?.orbital_data.orbit_determination_date !== asteroid.orbital_data.orbit_determination_date && asteroidDB.is_latest) {
 
                         await collection.insertOne(document);
                         console.log("***Saving new orbit_determination_date for existing asteroid " + asteroidDB.name + "***");
                         await collection.updateOne({ _id: asteroidDB._id }, { $set: { is_latest: false } });
                     }
-                    // else {
-                    //     console.log("***orbit_determination_date for " + asteroid.name + " is not newer - skipping***");
-                    // }
+                    else {
+                        console.log("***orbit_determination_date for " + asteroid.name + " is not newer - skipping***");
+                    }
                 }
             }
         }
