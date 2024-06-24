@@ -13,4 +13,4 @@ Analysis of Near Earth Objects.
 > You can check if `pip` is actually from your local `.venv` by running `pip --version`. It will display version and path to it.
 
 > [!NOTE]
-> After installing a package run `pip freeze > requirements.txt` to help future generations.
+> After installing a package run `pip freeze > requirements.txt` or just add name of installed package to the `requirements.txt` file.

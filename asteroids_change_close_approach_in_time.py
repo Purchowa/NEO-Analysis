@@ -9,7 +9,6 @@ from pymongo import MongoClient
 
 load_dotenv()
 
-
 def get_mongo_uri():
     uri = os.getenv("MONGO_URI")
     if not uri:
